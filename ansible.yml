@@ -1,0 +1,66 @@
+---
+- name: Настройка сервера Debian 12
+  hosts: localhost  # Выполнение на локальном устройстве
+  become: yes  # Использовать sudo для выполнения задач
+  tasks:
+    - name: Обновление пакетов
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Установка nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Установка curl
+      apt:
+        name: curl
+        state: present
+
+    - name: Установка git
+      apt:
+        name: git
+        state: present
+
+    - name: Установка Node.js версии 22 через NodeSource
+      shell: |
+        curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+        apt install -y nodejs
+
+    - name: Клонирование репозитория
+      git:
+        repo: https://github.com/zzz01t/IthubProject
+        dest: /var/www/IthubProject
+        version: v4
+        single_branch: yes
+
+    - name: Настройка конфигурации nginx
+      copy:
+        dest: /etc/nginx/sites-available/ithubproject
+        content: |
+          server {
+              listen 80;
+              server_name localhost;  # Замените на ваш домен или IP-адрес
+
+              root /var/www/IthubProject/public;  # Путь к публичной директории проекта
+              index Привет\!.html Привет!.html index.html index.htm;
+
+              location / {
+                  try_files $uri $uri/ =404;
+              }
+          }
+
+    - name: Создание символической ссылки для конфигурации nginx
+      file:
+        src: /etc/nginx/sites-available/ithubproject
+        dest: /etc/nginx/sites-enabled/ithubproject
+        state: link
+
+    - name: Проверка конфигурации nginx
+      command: nginx -t
+
+    - name: Перезапуск nginx
+      service:
+        name: nginx
+        state: restarted
